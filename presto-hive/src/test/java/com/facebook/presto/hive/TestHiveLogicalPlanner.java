@@ -2458,6 +2458,28 @@ public class TestHiveLogicalPlanner
     }
 
     @Test
+    public void testMaterializedViewSubquery()
+    {
+        QueryRunner queryRunner = getQueryRunner();
+        String view = "orders_key_view";
+        String table1 = "orders_key_partitioned_1";
+        String table2 = "orders_key_partitioned_2";
+        try {
+            queryRunner.execute(format("CREATE TABLE %s WITH (partitioned_by = ARRAY['ds']) AS SELECT 1 as a, '2020-01-01' as ds", table1));
+            queryRunner.execute(format("CREATE TABLE %s WITH (partitioned_by = ARRAY['ds']) AS SELECT 1 as a, '2020-01-01' as ds", table2));
+
+            assertQueryFails(format("CREATE MATERIALIZED VIEW %s WITH (partitioned_by = ARRAY['ds']) " +
+                            "AS SELECT t1.ds, t1.a FROM %s t1 WHERE (t1.a IN (SELECT t2.a FROM %s t2 WHERE t1.ds = t2.ds))", view, table1, table2),
+                    ".*Subqueries inside where in materialized view are not supported yet.*");
+        }
+        finally {
+            queryRunner.execute("DROP MATERIALIZED VIEW IF EXISTS " + view);
+            queryRunner.execute("DROP TABLE IF EXISTS " + table1);
+            queryRunner.execute("DROP TABLE IF EXISTS " + table2);
+        }
+    }
+
+    @Test
     public void testMaterializedViewLateralJoin()
     {
         QueryRunner queryRunner = getQueryRunner();

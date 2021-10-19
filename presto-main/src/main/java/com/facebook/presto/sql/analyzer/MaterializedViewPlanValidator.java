@@ -16,11 +16,14 @@ package com.facebook.presto.sql.analyzer;
 import com.facebook.presto.sql.tree.AliasedRelation;
 import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.DefaultTraversalVisitor;
+import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Join;
 import com.facebook.presto.sql.tree.JoinCriteria;
 import com.facebook.presto.sql.tree.JoinOn;
 import com.facebook.presto.sql.tree.LogicalBinaryExpression;
 import com.facebook.presto.sql.tree.Query;
+import com.facebook.presto.sql.tree.QuerySpecification;
+import com.facebook.presto.sql.tree.Table;
 import com.facebook.presto.sql.tree.Unnest;
 import com.google.common.collect.ImmutableList;
 
@@ -39,6 +42,42 @@ public class MaterializedViewPlanValidator
     public static void validate(Query viewQuery)
     {
         new MaterializedViewPlanValidator().process(viewQuery, new MaterializedViewPlanValidatorContext());
+    }
+
+    @Override
+    protected Void visitQuerySpecification(QuerySpecification node, MaterializedViewPlanValidatorContext context)
+    {
+        process(node.getSelect(), context);
+        if (node.getFrom().isPresent()) {
+            process(node.getFrom().get(), context);
+        }
+        if (node.getWhere().isPresent()) {
+            Expression subquery = node.getWhere().get();
+            boolean wasWithinWhere = context.isWithinWhere();
+
+            context.setWithinWhere(true);
+            process(subquery, context);
+            context.setWithinWhere(wasWithinWhere);
+        }
+        if (node.getGroupBy().isPresent()) {
+            process(node.getGroupBy().get(), context);
+        }
+        if (node.getHaving().isPresent()) {
+            process(node.getHaving().get(), context);
+        }
+        if (node.getOrderBy().isPresent()) {
+            process(node.getOrderBy().get(), context);
+        }
+        return null;
+    }
+
+    @Override
+    protected Void visitTable(Table node, MaterializedViewPlanValidatorContext context)
+    {
+        if (context.isWithinWhere()) {
+            throw new SemanticException(NOT_SUPPORTED, node, "Subqueries inside where in materialized view are not supported yet");
+        }
+        return super.visitTable(node, context);
     }
 
     @Override
@@ -119,12 +158,14 @@ public class MaterializedViewPlanValidator
     public static final class MaterializedViewPlanValidatorContext
     {
         private boolean isProcessingJoinNode;
+        private boolean isWithinWhere;
         private final LinkedList<Join> joinNodeStack;
 
         public MaterializedViewPlanValidatorContext()
         {
             isProcessingJoinNode = false;
             joinNodeStack = new LinkedList<>();
+            isWithinWhere = false;
         }
 
         public boolean isProcessingJoinNode()
@@ -132,9 +173,19 @@ public class MaterializedViewPlanValidator
             return isProcessingJoinNode;
         }
 
+        public boolean isWithinWhere()
+        {
+            return isWithinWhere;
+        }
+
         public void setProcessingJoinNode(boolean processingJoinNode)
         {
             isProcessingJoinNode = processingJoinNode;
+        }
+
+        public void setWithinWhere(boolean withinWhere)
+        {
+            isWithinWhere = withinWhere;
         }
 
         public void pushJoinNode(Join join)
