@@ -76,7 +76,10 @@ public final class CachingStatsProvider
             if (stats != null) {
                 return stats;
             }
-
+            // call RTML. Use PlanPrinter.jsonLogicalPlan
+            // Another issue is that it stops at GroupReference - which is just a ref to another PlanNode.
+            // Look at Memo class on how GroupReference works
+            // Print underlying PlanNode when printing GroupReference. Modify PlanPrinter.visitGroupReference()
             stats = statsCalculator.calculateStats(node, this, lookup, session, types);
             verify(cache.put(node, stats) == null, "Stats already set");
             return stats;
@@ -99,7 +102,10 @@ public final class CachingStatsProvider
         if (stats.isPresent()) {
             return stats.get();
         }
-
+        // call RTML. Use PlanPrinter.jsonLogicalPlan
+        // Another issue is that it stops at GroupReference - which is just a ref to another PlanNode
+        // Look at Memo class on how GroupReference works
+        // Print underlying PlanNode when printing GroupReference. Modify PlanPrinter.visitGroupReference()
         PlanNodeStatsEstimate groupStats = statsCalculator.calculateStats(memo.getNode(group), this, lookup, session, types);
         verify(!memo.getStats(group).isPresent(), "Group stats already set");
         memo.storeStats(group, groupStats);

@@ -19,6 +19,7 @@ import com.facebook.presto.spi.plan.PlanNodeId;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
 import com.facebook.presto.sql.planner.plan.InternalPlanNode;
 import com.facebook.presto.sql.planner.plan.InternalPlanVisitor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
@@ -29,12 +30,14 @@ public class GroupReference
 {
     private final int groupId;
     private final List<VariableReferenceExpression> outputs;
+    private Memo memo;
 
-    public GroupReference(Optional<SourceLocation> sourceLocation, PlanNodeId id, int groupId, List<VariableReferenceExpression> outputs)
+    public GroupReference(Optional<SourceLocation> sourceLocation, PlanNodeId id, int groupId, List<VariableReferenceExpression> outputs, Memo memo)
     {
         super(sourceLocation, id);
         this.groupId = groupId;
         this.outputs = ImmutableList.copyOf(outputs);
+        this.memo = memo;
     }
 
     public int getGroupId()
@@ -52,6 +55,11 @@ public class GroupReference
     public <R, C> R accept(InternalPlanVisitor<R, C> visitor, C context)
     {
         return visitor.visitGroupReference(this, context);
+    }
+
+    public PlanNode getSource()
+    {
+        return memo.getNode(groupId);
     }
 
     @Override

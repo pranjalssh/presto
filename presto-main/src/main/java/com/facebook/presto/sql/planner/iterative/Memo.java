@@ -216,7 +216,8 @@ public class Memo
                                 node.getSourceLocation(),
                                 idAllocator.getNextId(),
                                 insertRecursive(child),
-                                child.getOutputVariables()))
+                                child.getOutputVariables(),
+                                this))
                         .collect(Collectors.toList()));
     }
 
