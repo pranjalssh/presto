@@ -14,6 +14,7 @@
 package com.facebook.presto.hive;
 
 import com.facebook.airlift.concurrent.BoundedExecutor;
+import com.facebook.airlift.log.Logger;
 import com.facebook.airlift.stats.CounterStat;
 import com.facebook.presto.common.Subfield;
 import com.facebook.presto.common.predicate.Domain;
@@ -289,6 +290,8 @@ public class HiveSplitManager
                 layout.getDomainPredicate().getDomains());
 
         double ratio = getSplitScanRatio(session, tableName, layout, metadata, partitions);
+
+        Logger.get(HiveSplitManager.class).info("partitions=%d", partitions.size());
 
         HiveSplitLoader hiveSplitLoader = new BackgroundHiveSplitLoader(
                 table,

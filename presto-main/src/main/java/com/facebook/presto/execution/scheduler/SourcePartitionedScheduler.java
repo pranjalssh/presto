@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.execution.scheduler;
 
+import com.facebook.airlift.log.Logger;
 import com.facebook.presto.execution.Lifespan;
 import com.facebook.presto.execution.RemoteTask;
 import com.facebook.presto.execution.SqlStageExecution;
@@ -228,6 +229,7 @@ public class SourcePartitionedScheduler
 
                 if (scheduleGroup.nextSplitBatchFuture.isDone()) {
                     SplitBatch nextSplits = getFutureValue(scheduleGroup.nextSplitBatchFuture);
+                    Logger.get(SourcePartitionedScheduler.class).info("splitBatchSize=%d", nextSplits.getSplits().size());
                     scheduleGroup.nextSplitBatchFuture = null;
                     scheduleGroup.pendingSplits = new HashSet<>(nextSplits.getSplits());
                     if (nextSplits.isLastBatch()) {
@@ -270,11 +272,15 @@ public class SourcePartitionedScheduler
                 }
 
                 // calculate placements for splits
+                int tried = scheduleGroup.pendingSplits.size();
                 SplitPlacementResult splitPlacementResult = splitPlacementPolicy.computeAssignments(scheduleGroup.pendingSplits);
                 splitAssignment = splitPlacementResult.getAssignments();
+                int assigned = splitAssignment.size();
 
                 // remove splits with successful placements
                 splitAssignment.values().forEach(scheduleGroup.pendingSplits::remove); // AbstractSet.removeAll performs terribly here.
+                int left = scheduleGroup.pendingSplits.size();
+                Logger.get(SourcePartitionedScheduler.class).info("Tried %d, assigned %d, left %d", tried, assigned, left);
                 overallSplitAssignmentCount += splitAssignment.size();
 
                 // if not completed placed, mark scheduleGroup as blocked on placement

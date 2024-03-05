@@ -426,6 +426,7 @@ class HiveSplitSource
                     databaseName, tableName, succinctBytes(maxOutstandingSplitsBytes), getBufferedInternalSplitCount()));
         }
         bufferedInternalSplitCount.incrementAndGet();
+        Logger.get(HiveSplitSource.class).info("bufferedInternalSplitCount=%d", bufferedInternalSplitCount.get());
         OptionalInt bucketNumber = split.getReadBucketNumber();
         return queues.offer(bucketNumber, split);
     }
